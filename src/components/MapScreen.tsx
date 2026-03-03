@@ -43,6 +43,7 @@ export default function MapScreen() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [showMissions, setShowMissions] = useState(false);
+  const [hasSetInitialCenter, setHasSetInitialCenter] = useState(false);
 
   // player & mission states
   const [player, setPlayer] = useState(loadPlayer());
@@ -95,6 +96,15 @@ export default function MapScreen() {
       mapRef.current = null;
     };
   }, []);
+
+  // 位置情報が取得できたら地図を現在地に飛ばす
+  useEffect(() => {
+    if (mapRef.current && position && !hasSetInitialCenter) {
+      // 最初の1回だけ、アニメーションなしで現在地へ移動
+      mapRef.current.setView([position.lat, position.lng], 16);
+      setHasSetInitialCenter(true);
+    }
+  }, [position, hasSetInitialCenter]);
 
   // Update user position marker
   useEffect(() => {
