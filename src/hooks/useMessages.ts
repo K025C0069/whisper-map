@@ -78,5 +78,9 @@ export function useMessages(userLat: number | null, userLng: number | null) {
     [userLat, userLng]
   );
 
-  return { messages, addMessage };
+  const deleteMessage = useCallback((id: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+  }, []);
+
+  return { messages, addMessage, deleteMessage };
 }

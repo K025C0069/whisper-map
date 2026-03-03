@@ -32,7 +32,7 @@ export default function MapScreen() {
   const { position } = useGeolocation();
   
   // position が取得されるまでは null を渡す
-  const { messages, addMessage } = useMessages(
+  const { messages, addMessage, deleteMessage } = useMessages(
     position?.lat ?? null,
     position?.lng ?? null
   );
@@ -138,9 +138,10 @@ export default function MapScreen() {
         return;
       }
 
+      const isMyMessage = msg.id.startsWith("msg-");
       const distance = getDistance(position.lat, position.lng, msg.lat, msg.lng);
 
-      if (distance <= VISIBLE_RADIUS) {
+      if (isMyMessage || distance <= VISIBLE_RADIUS) {
         setSelectedMessage(msg);
       } else {
         toast({
@@ -270,6 +271,7 @@ export default function MapScreen() {
       {/* Message viewer */}
       <MessageViewer
         message={selectedMessage}
+        onDelete={deleteMessage}
         onClose={() => setSelectedMessage(null)}
       />
 

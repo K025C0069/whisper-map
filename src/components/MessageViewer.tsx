@@ -4,6 +4,7 @@ import type { Message } from "@/types/message";
 interface MessageViewerProps {
   message: Message | null;
   onClose: () => void;
+  onDelete: (id: string) => void;
 }
 
 function timeAgo(timestamp: number) {
@@ -16,7 +17,7 @@ function timeAgo(timestamp: number) {
   return `${Math.floor(hours / 24)}日前`;
 }
 
-export function MessageViewer({ message, onClose }: MessageViewerProps) {
+export function MessageViewer({ message, onClose, onDelete }: MessageViewerProps) {
   return (
     <AnimatePresence>
       {message && (
@@ -51,9 +52,21 @@ export function MessageViewer({ message, onClose }: MessageViewerProps) {
               {timeAgo(message.timestamp)}
             </p>
 
+            {message.id.startsWith("msg-") && (
+              <button
+                onClick={() => {
+                  onDelete(message.id);
+                  onClose();
+                }}
+                className="mt-6 w-full rounded-xl bg-destructive/10 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
+              >
+                このメッセージを削除
+              </button>
+            )}
+
             <button
               onClick={onClose}
-              className="mt-4 w-full rounded-xl bg-secondary py-2.5 text-sm text-secondary-foreground transition-colors hover:bg-secondary/80"
+              className="mt-2 w-full rounded-xl bg-secondary py-2.5 text-sm text-secondary-foreground transition-colors hover:bg-secondary/80"
             >
               閉じる
             </button>
