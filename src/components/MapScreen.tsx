@@ -5,9 +5,22 @@ import { motion } from "framer-motion";
 import { GlowMarker } from "@/components/GlowMarker";
 import { MessageViewer } from "@/components/MessageViewer";
 import { MessageComposer } from "@/components/MessageComposer";
+import { MissionList } from "@/components/missions/MissionList";
+import { PlayerStatus } from "@/components/player/PlayerStatus";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useMessages } from "@/hooks/useMessages";
+import { createWhisperEvent } from "@/lib/event";
+import { loadEvents, saveEvents } from "@/lib/storage";
+import { loadPlayer, savePlayer, addExp } from "@/lib/player";
+import {
+  loadMissionState,
+  claimMission,
+  DailyMissionState,
+  Mission,
+} from "@/lib/missions";
+import { toast } from "@/hooks/use-toast"; 
 import type { Message } from "@/types/message";
+import type { WhisperEvent } from "@/types/event";    
 
 export default function MapScreen() {
   const mapRef = useRef<L.Map | null>(null);
@@ -21,9 +34,39 @@ export default function MapScreen() {
     position?.lng ?? 139.7671
   );
 
+  const [events, setEvents] = useState<WhisperEvent[]>(loadEvents());
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [showMissions, setShowMissions] = useState(false);
+
+  // player & mission states
+  const [player, setPlayer] = useState(loadPlayer());
+  const [missionState, setMissionState] = useState<DailyMissionState>(
+    loadMissionState()
+  );
+
+  useEffect(() => {
+    savePlayer(player);
+  }, [player]);
+
+
+  // Track location for events
+  useEffect(() => {
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const newEvent = createWhisperEvent(latitude, longitude);
+        const updated = [...events, newEvent];
+        setEvents(updated);
+        saveEvents(updated);
+      },
+      (err) => console.error(err),
+      { enableHighAccuracy: true }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [events]);
 
   // Initialize map
   useEffect(() => {
@@ -78,6 +121,16 @@ export default function MapScreen() {
     setSelectedMessage(msg);
   }, []);
 
+  const handleClaim = (m: Mission) => {
+    if (!m) return;
+    setMissionState((s) => claimMission(s, m.id));
+    setPlayer((p) => addExp(p, m.rewardExp));
+    toast({
+      title: `+${m.rewardExp} EXP`,
+      description: `${m.title} の報酬を受け取りました`,
+    });
+  };
+
   const centerOnUser = () => {
     if (mapRef.current && position) {
       mapRef.current.flyTo([position.lat, position.lng], 16, { duration: 0.8 });
@@ -118,19 +171,46 @@ export default function MapScreen() {
         </div>
       </motion.div>
 
+      {/* Player status */}
+      <div className="absolute top-0 right-0 z-20 m-4">
+        <PlayerStatus player={player} />
+      </div>
+
       {/* Bottom controls */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-3 pb-10 pt-16 bg-gradient-to-t from-background/90 to-transparent"
+        className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-3 pb-10 pt-16 bg-gradient-to-t from-background/90 to-transparent max-h-96 overflow-y-auto"
       >
+        {/* Mission section */}
+        {showMissions && (
+          <div className="w-full px-4">
+            <MissionList
+              events={events}
+              player={player}
+              setPlayer={setPlayer}
+              missionState={missionState}
+              onClaim={handleClaim}
+            />
+          </div>
+        )}
+
         {/* Message count */}
         <p className="text-xs text-muted-foreground">
           この付近に {messages.length} 件のメッセージ
         </p>
 
         <div className="flex items-center gap-3">
+          {/* Mission button */}
+          <button
+            onClick={() => setShowMissions(!showMissions)}
+            className="glass flex h-12 w-12 items-center justify-center rounded-full transition-all hover:bg-secondary"
+            title="ミッション"
+          >
+            <span className="text-lg">📋</span>
+          </button>
+
           {/* Center button */}
           <button
             onClick={centerOnUser}
