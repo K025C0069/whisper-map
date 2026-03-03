@@ -9,7 +9,7 @@ export function loadPlayer(): PlayerState {
   return {
     level: 1,
     exp: 0,
-    nextExp: 100,
+    nextExp: 50,
   };
 }
 

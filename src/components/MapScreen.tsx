@@ -7,11 +7,12 @@ import { MessageViewer } from "@/components/MessageViewer";
 import { MessageComposer } from "@/components/MessageComposer";
 import { MissionList } from "@/components/missions/MissionList";
 import { PlayerStatus } from "@/components/player/PlayerStatus";
+import LevelDisplay from "@/components/LevelDisplay";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useMessages } from "@/hooks/useMessages";
 import { createWhisperEvent } from "@/lib/event";
 import { loadEvents, saveEvents } from "@/lib/storage";
-import { loadPlayer, savePlayer, addExp } from "@/lib/player";
+import { useLevel } from "@/contexts/LevelContext";
 import {
   loadMissionState,
   claimMission,
@@ -45,15 +46,12 @@ export default function MapScreen() {
   const [showMissions, setShowMissions] = useState(false);
   const [hasSetInitialCenter, setHasSetInitialCenter] = useState(false);
 
-  // player & mission states
-  const [player, setPlayer] = useState(loadPlayer());
+  // mission state (player is managed by LevelContext)
   const [missionState, setMissionState] = useState<DailyMissionState>(
     loadMissionState()
   );
 
-  useEffect(() => {
-    savePlayer(player);
-  }, [player]);
+  const { level, exp, expToNext, addExp } = useLevel();
 
 
   // Track location for events
@@ -156,7 +154,7 @@ export default function MapScreen() {
   const handleClaim = (m: Mission) => {
     if (!m) return;
     setMissionState((s) => claimMission(s, m.id));
-    setPlayer((p) => addExp(p, m.rewardExp));
+    addExp(m.rewardExp);
     toast({
       title: `+${m.rewardExp} EXP`,
       description: `${m.title} の報酬を受け取りました`,
@@ -205,7 +203,10 @@ export default function MapScreen() {
 
       {/* Player status */}
       <div className="absolute top-0 right-0 z-20 m-4">
-        <PlayerStatus player={player} />
+        <div className="flex flex-col gap-3 items-end">
+          <PlayerStatus player={{ level, exp, nextExp: expToNext }} />
+          <LevelDisplay />
+        </div>
       </div>
 
       {/* Bottom controls */}
@@ -213,18 +214,14 @@ export default function MapScreen() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-3 pb-10 pt-16 bg-gradient-to-t from-background/90 to-transparent max-h-96 overflow-y-auto"
+        className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-3 pb-10 pt-16 bg-gradient-to-t from-background/30 to-transparent max-h-96 overflow-y-auto"
       >
         {/* Mission section */}
         {showMissions && (
           <div className="w-full px-4">
-            <MissionList
-              events={events}
-              player={player}
-              setPlayer={setPlayer}
-              missionState={missionState}
-              onClaim={handleClaim}
-            />
+            <div className="bg-background/80 rounded-xl p-4 shadow-lg max-h-80 overflow-auto">
+              <MissionList events={events} missionState={missionState} onClaim={handleClaim} />
+            </div>
           </div>
         )}
 
