@@ -12,17 +12,11 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { useMessages } from "@/hooks/useMessages";
 import { createWhisperEvent } from "@/lib/event";
 import { loadEvents, saveEvents } from "@/lib/storage";
+import { loadMissionState, claimMission, DailyMissionState, Mission } from "@/lib/missions";
+import { toast } from "@/hooks/use-toast";
 import { useLevel } from "@/contexts/LevelContext";
-import {
-  loadMissionState,
-  claimMission,
-  DailyMissionState,
-  Mission,
-} from "@/lib/missions";
-import { getDistance } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast"; 
 import type { Message } from "@/types/message";
-import type { WhisperEvent } from "@/types/event";    
+import type { WhisperEvent } from "@/types/event";
 
 export default function MapScreen() {
   const mapRef = useRef<L.Map | null>(null);
@@ -31,27 +25,22 @@ export default function MapScreen() {
   const userPulseRef = useRef<L.CircleMarker | null>(null);
 
   const { position } = useGeolocation();
-  
-  // position が取得されるまでは null を渡す
   const { messages, addMessage, deleteMessage } = useMessages(
-    position?.lat ?? null,
-    position?.lng ?? null
+    position?.lat ?? 35.6812,
+    position?.lng ?? 139.7671
   );
-  const VISIBLE_RADIUS = 500; // 500m以内なら閲覧可能
 
   const [events, setEvents] = useState<WhisperEvent[]>(loadEvents());
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [showMissions, setShowMissions] = useState(false);
-  const [hasSetInitialCenter, setHasSetInitialCenter] = useState(false);
 
-  // mission state (player is managed by LevelContext)
   const [missionState, setMissionState] = useState<DailyMissionState>(
     loadMissionState()
   );
 
-  const { level, exp, expToNext, addExp } = useLevel();
+  const { addExp } = useLevel();
 
 
   // Track location for events
@@ -95,15 +84,6 @@ export default function MapScreen() {
     };
   }, []);
 
-  // 位置情報が取得できたら地図を現在地に飛ばす
-  useEffect(() => {
-    if (mapRef.current && position && !hasSetInitialCenter) {
-      // 最初の1回だけ、アニメーションなしで現在地へ移動
-      mapRef.current.setView([position.lat, position.lng], 16);
-      setHasSetInitialCenter(true);
-    }
-  }, [position, hasSetInitialCenter]);
-
   // Update user position marker
   useEffect(() => {
     if (!mapRef.current || !position) return;
@@ -129,28 +109,9 @@ export default function MapScreen() {
     }).addTo(map);
   }, [position]);
 
-  const handleMarkerClick = useCallback(
-    (msg: Message) => {
-      if (!position) {
-        toast({ title: "位置情報を取得中です" });
-        return;
-      }
-
-      const isMyMessage = msg.id.startsWith("msg-");
-      const distance = getDistance(position.lat, position.lng, msg.lat, msg.lng);
-
-      if (isMyMessage || distance <= VISIBLE_RADIUS) {
-        setSelectedMessage(msg);
-      } else {
-        toast({
-          variant: "destructive",
-          title: "ここからは読めません",
-          description: `あと ${Math.round(distance - VISIBLE_RADIUS)}m 近づいてください。`,
-        });
-      }
-    },
-    [position]
-  );
+  const handleMarkerClick = useCallback((msg: Message) => {
+    setSelectedMessage(msg);
+  }, []);
 
   const handleClaim = (m: Mission) => {
     if (!m) return;
@@ -205,24 +166,35 @@ export default function MapScreen() {
       {/* Player status */}
       <div className="absolute top-0 right-0 z-20 m-4">
         <div className="flex flex-col gap-3 items-end">
-          <PlayerStatus player={{ level, exp, nextExp: expToNext }} />
+          <PlayerStatus />
           <LevelDisplay />
         </div>
       </div>
 
       {/* Bottom controls */}
+      {showMissions && (
+        <div
+          className="absolute inset-0 z-30 bg-transparent"
+          onClick={() => setShowMissions(false)}
+        />
+      )}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-3 pb-10 pt-16 bg-gradient-to-t from-background/30 to-transparent max-h-96 overflow-y-auto"
+        className="absolute bottom-0 left-0 right-0 z-40 flex flex-col items-center gap-3 pb-10 pt-16 bg-gradient-to-t from-background/90 to-transparent max-h-96 overflow-y-auto"
       >
         {/* Mission section */}
         {showMissions && (
-          <div className="w-full px-4">
-            <div className="bg-background/80 rounded-xl p-4 shadow-lg max-h-80 overflow-auto">
-              <MissionList events={events} missionState={missionState} onClaim={handleClaim} />
-            </div>
+          <div
+            className="w-full px-4 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MissionList
+              events={events}
+              missionState={missionState}
+              onClaim={handleClaim}
+            />
           </div>
         )}
 
@@ -268,8 +240,8 @@ export default function MapScreen() {
       {/* Message viewer */}
       <MessageViewer
         message={selectedMessage}
-        onDelete={deleteMessage}
         onClose={() => setSelectedMessage(null)}
+        onDelete={(id) => deleteMessage(id)}
       />
 
       {/* Composer */}
