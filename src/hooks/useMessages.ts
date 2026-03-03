@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import type { Message } from "@/types/message";
+import { loadMessages, saveMessages } from "@/lib/storage";
+
 
 // 東京駅の座標
 const TOKYO_STATION = { lat: 35.6812, lng: 139.7671 };
@@ -29,11 +31,21 @@ function generateMockMessages(lat: number, lng: number, prefix: string): Message
 }
 
 export function useMessages(userLat: number | null, userLng: number | null) {
-  // 初期状態で東京駅付近のモックを生成して保持する
-  const [messages, setMessages] = useState<Message[]>(() =>
-    generateMockMessages(TOKYO_STATION.lat, TOKYO_STATION.lng, "tokyo")
-  );
+  // 初期状態でモックと保存済みのメッセージを合体させる
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const saved = loadMessages();
+    const mocks = generateMockMessages(TOKYO_STATION.lat, TOKYO_STATION.lng, "tokyo");
+    return [...mocks, ...saved];
+  });
   const [localMocksGenerated, setLocalMocksGenerated] = useState(false);
+
+  // メッセージが変更されるたびに localStorage に保存する
+  useEffect(() => {
+    // ユーザーが投稿したメッセージ（idが "msg-" で始まるもの）のみを保存対象にする
+    // こうすることで、アプリ起動のたびに生成されるモックの重複保存を防げます
+    const userMessages = messages.filter((m) => m.id.startsWith("msg-"));
+    saveMessages(userMessages);
+  }, [messages]);
 
   // ユーザーの現在地が取得できたら、その周辺のモックを追加する
   useEffect(() => {
