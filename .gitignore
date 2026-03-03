@@ -23,4 +23,5 @@ dist-ssr
 *.sln
 *.sw?
 
+# 追記する
 package-lock.json

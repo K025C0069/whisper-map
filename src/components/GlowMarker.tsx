@@ -8,18 +8,24 @@ interface GlowMarkerProps {
   onClick: (message: Message) => void;
 }
 
-const GLOW_COLORS = [
-  "hsl(185, 80%, 55%)",  // cyan
-  "hsl(260, 60%, 65%)",  // purple
-  "hsl(35, 90%, 60%)",   // warm
-  "hsl(150, 60%, 50%)",  // green
-  "hsl(320, 60%, 60%)",  // pink
+const OTHER_GLOW_COLORS = [
+  "hsl(217, 91%, 60%)", // Blue
+  "hsl(0, 84%, 60%)",   // Red
+  "hsl(45, 93%, 47%)",  // Yellow
 ];
 
 function getColor(id: string) {
+  // 自分のメッセージは緑色
+  if (id.startsWith("msg-")) {
+    return "hsl(142, 71%, 45%)"; // Green
+  }
+
+  // 他人のメッセージは青・赤・黄色からIDに基づいて選択
   let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  return GLOW_COLORS[Math.abs(hash) % GLOW_COLORS.length];
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return OTHER_GLOW_COLORS[Math.abs(hash) % OTHER_GLOW_COLORS.length];
 }
 
 export function GlowMarker({ map, message, onClick }: GlowMarkerProps) {
