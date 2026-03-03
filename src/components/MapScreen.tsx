@@ -18,6 +18,7 @@ import {
   DailyMissionState,
   Mission,
 } from "@/lib/missions";
+import { getDistance } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast"; 
 import type { Message } from "@/types/message";
 import type { WhisperEvent } from "@/types/event";    
@@ -33,6 +34,7 @@ export default function MapScreen() {
     position?.lat ?? 35.6812,
     position?.lng ?? 139.7671
   );
+  const VISIBLE_RADIUS = 500;
 
   const [events, setEvents] = useState<WhisperEvent[]>(loadEvents());
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
@@ -117,9 +119,27 @@ export default function MapScreen() {
     }).addTo(map);
   }, [position]);
 
-  const handleMarkerClick = useCallback((msg: Message) => {
-    setSelectedMessage(msg);
-  }, []);
+  const handleMarkerClick = useCallback(
+    (msg: Message) => {
+      if (!position) {
+        toast({ title: "位置情報を取得中です" });
+        return;
+      }
+
+      const distance = getDistance(position.lat, position.lng, msg.lat, msg.lng);
+
+      if (distance <= VISIBLE_RADIUS) {
+        setSelectedMessage(msg);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "ここからは読めません",
+          description: `あと ${Math.round(distance - VISIBLE_RADIUS)}m 近づいてください。`,
+        });
+      }
+    },
+    [position]
+  );
 
   const handleClaim = (m: Mission) => {
     if (!m) return;
