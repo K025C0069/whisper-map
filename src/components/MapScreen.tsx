@@ -30,11 +30,13 @@ export default function MapScreen() {
   const userPulseRef = useRef<L.CircleMarker | null>(null);
 
   const { position } = useGeolocation();
+  
+  // position が取得されるまでは null を渡す
   const { messages, addMessage } = useMessages(
-    position?.lat ?? 35.6812,
-    position?.lng ?? 139.7671
+    position?.lat ?? null,
+    position?.lng ?? null
   );
-  const VISIBLE_RADIUS = 500;
+  const VISIBLE_RADIUS = 500; // 500m以内なら閲覧可能
 
   const [events, setEvents] = useState<WhisperEvent[]>(loadEvents());
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
