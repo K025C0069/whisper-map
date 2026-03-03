@@ -4,14 +4,10 @@ import { PlayerState } from "@/types/player";
 
 export function MissionList({
   events,
-  player,
-  setPlayer,
   missionState,
   onClaim,
 }: {
   events: WhisperEvent[];
-  player: PlayerState;
-  setPlayer: (p: PlayerState) => void;
   missionState: DailyMissionState;
   onClaim: (mission: Mission) => void;
 }) {
